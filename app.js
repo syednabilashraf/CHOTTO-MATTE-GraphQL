@@ -1,7 +1,9 @@
 const express = require('express');
 const {graphqlHTTP} = require('express-graphql');
-const {GraphQLObjectType, GraphQLString, GraphQLSchema, GraphQLList} = require('graphql');
-
+const {GraphQLObjectType, GraphQLString, GraphQLSchema, GraphQLList, GraphQLInt} = require('graphql');
+const mongoose = require('mongoose')
+const Author = require('./models/author.model');
+const Book = require('./models/book.model')
 //dummy data
 
 const books = [
@@ -25,8 +27,9 @@ const authors = [{
     age: '53'
 }]
 
-
+mongoose.connect('mongodb://localhost:27017/reading_list');
 const app = express();
+
 
 const BookType = new GraphQLObjectType({
     name: 'Book',
@@ -49,7 +52,7 @@ const AuthorType = new GraphQLObjectType({
     fields: () => ({
         id: {type: GraphQLString},
         name: {type: GraphQLString},
-        age: {type: GraphQLString},
+        age: {type: GraphQLInt},
         bookId: {
             type: new GraphQLList(BookType),
             resolve(parent, args) {
@@ -59,8 +62,6 @@ const AuthorType = new GraphQLObjectType({
 
     })
 })
-
-
 
 const rootQuery = new GraphQLObjectType({
     name: 'rootQuery',
@@ -96,8 +97,29 @@ const rootQuery = new GraphQLObjectType({
     }
 })
 
+const Mutation = new GraphQLObjectType({
+    name: 'Mutation',
+    fields: {
+        addAuthor: {
+            type: AuthorType,
+            args: {
+                name: {type: GraphQLString},
+                age: {type: GraphQLInt}
+            },
+            resolve(parent, args) {
+                const author = new Author({
+                    name: args.name,
+                    age: args.age
+                })
+                return author.save();
+            }
+        }
+    }
+})
+
 const schema = new GraphQLSchema({
-    query: rootQuery
+    query: rootQuery,
+    mutation: Mutation
 })
 
 app.use('/graphql', graphqlHTTP(
